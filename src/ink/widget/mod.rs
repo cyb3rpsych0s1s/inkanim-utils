@@ -3,19 +3,20 @@
 //! All the widgets in Cybperunk 2077 UI
 //! are similar to the web and traditional UI frameworks.
 
-mod font;
-mod image;
+pub mod font;
+pub mod image;
 pub(crate) mod implementation;
-mod layout;
-mod properties;
+pub mod layout;
+pub mod properties;
 
 use enum_dispatch::enum_dispatch;
 pub use implementation::*;
 
+use inkanim_macros::RedsValue;
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::deserialize_bool_from_anything;
 
-use crate::{DepotPath, Name};
+use crate::{CName, RedsWidget, ResourcePath};
 
 use self::{
     font::{
@@ -33,25 +34,41 @@ pub trait SiblingOrNested {
     fn sibling_or_nested(&self, searched: &[usize]) -> bool;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, RedsValue, PartialEq)]
 #[non_exhaustive]
 pub enum Flags {
+    #[default]
     Default,
     Soft,
     Hard,
+}
+
+unsafe impl red4ext_rs::NativeRepr for Flags {
+    const NAME: &'static str = "Flags";
 }
 
 macro_rules! native_compound_widget {
     ($ty:ident) => {
         #[doc=concat!("see [NativeDB](https://nativedb.red4ext.com/", stringify!($ty), ")")]
         #[allow(non_camel_case_types)]
-        #[derive(Debug, Clone, Serialize, Deserialize)]
+        #[derive(
+            Debug,
+            Clone,
+            Serialize,
+            Deserialize,
+            Default,
+            PartialEq,
+            inkanim_macros::RedsWidgetCompound,
+        )]
         #[serde(rename_all = "camelCase")]
         pub struct $ty {
             pub children: InkWrapper<inkMultiChildren>,
-            pub name: $crate::Name,
+            pub name: $crate::CName,
             pub child_order: self::layout::inkEChildOrder,
             pub child_margin: self::layout::inkMargin,
+        }
+        unsafe impl red4ext_rs::NativeRepr for $ty {
+            const NAME: &'static str = ::const_str::replace!(::std::stringify!($ty), "Widget", "");
         }
     };
 }
@@ -60,16 +77,19 @@ macro_rules! native_leaf_widget {
     ($ty:ident { $($tt:tt)* }) => {
         #[doc=concat!("🌿 see [NativeDB](https://nativedb.red4ext.com/", stringify!($ty), ")")]
         #[allow(non_camel_case_types)]
-        #[derive(Debug, Clone, Serialize, Deserialize)]
+        #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, inkanim_macros::RedsWidgetLeaf)]
         #[serde(rename_all = "camelCase")]
         pub struct $ty {
-            pub name: $crate::Name,
+            pub name: $crate::CName,
             pub layout: self::layout::inkWidgetLayout,
             pub property_manager: Option<self::properties::PropertyManager>,
             pub render_transform_pivot: crate::Vector2,
             pub render_transform: self::layout::inkUITransform,
             pub size: crate::Vector2,
             $($tt)*
+        }
+        unsafe impl red4ext_rs::NativeRepr for $ty {
+            const NAME: &'static str = ::const_str::replace!(::std::stringify!($ty), "Widget", "");
         }
     };
     ($ty:ident) => {
@@ -88,9 +108,25 @@ native_compound_widget!(inkCacheWidget);
 
 /// see [NativeDB](https://nativedb.red4ext.com/inkMultiChildren)
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct inkMultiChildren {
     pub children: Vec<InkWrapper<Widget>>,
+}
+
+impl RedsWidget for inkMultiChildren {
+    fn reds_widget(&self, name: &str, parent: Option<&str>) -> String {
+        self.children
+            .iter()
+            .map(|x| x.reds_widget(name, parent))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+impl inkMultiChildren {
+    pub fn iter(&self) -> std::slice::Iter<'_, InkWrapper<Widget>> {
+        self.children.iter()
+    }
 }
 
 native_leaf_widget!(inkTextWidget {
@@ -112,7 +148,7 @@ native_leaf_widget!(inkTextWidget {
 native_leaf_widget!(inkImageWidget {
     #[serde(deserialize_with = "deserialize_bool_from_anything")]
     pub use_external_dynamic_texture: bool,
-    pub external_dynamic_texture: Name,
+    pub external_dynamic_texture: CName,
     #[serde(deserialize_with = "deserialize_bool_from_anything")]
     pub use_nine_slice_scale: bool,
     pub nine_slice_scale: inkMargin,
@@ -121,7 +157,7 @@ native_leaf_widget!(inkImageWidget {
     pub horizontal_tile_crop: f32,
     pub vertical_tile_crop: f32,
     pub texture_atlas: inkTextureAtlas,
-    pub texture_part: Name,
+    pub texture_part: CName,
     pub content_h_align: inkEHorizontalAlign,
     pub content_v_align: inkEVerticalAlign,
     pub tile_h_align: inkEHorizontalAlign,
@@ -139,7 +175,7 @@ native_leaf_widget!(inkVectorGraphicWidget);
 #[allow(clippy::enum_variant_names)]
 #[allow(non_camel_case_types)]
 #[non_exhaustive]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[enum_dispatch(Classname)]
 #[serde(tag = "$type")]
 pub enum Widget {
@@ -189,7 +225,7 @@ pub struct Package {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct inkWidgetLibraryItem {
-    pub name: Name,
+    pub name: CName,
     pub package: Package,
 }
 
@@ -198,7 +234,7 @@ pub struct inkWidgetLibraryItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct inkanimAnimationLibraryResource {
-    depot_path: DepotPath,
+    depot_path: ResourcePath,
     flags: Flags,
 }
 
@@ -218,5 +254,5 @@ pub struct WidgetSummary {
     /// unique handle ID
     pub HandleId: HandleId,
     /// widget name
-    pub Name: Name,
+    pub Name: CName,
 }

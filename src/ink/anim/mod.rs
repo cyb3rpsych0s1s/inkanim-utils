@@ -3,7 +3,7 @@ mod display;
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 
-use crate::{HDRColor, Name, Vector2};
+use crate::{CName, HDRColor, Vector2};
 
 use super::InkWrapper;
 
@@ -124,8 +124,8 @@ pub struct Interpolator {
 #[serde(rename_all = "camelCase")]
 pub struct EffectInterpolator {
     pub effect_type: inkEffectType,
-    pub effect_name: Name,
-    pub param_name: Name,
+    pub effect_name: CName,
+    pub param_name: CName,
     #[serde(flatten)]
     pub base: Interpolator,
 }
@@ -307,7 +307,7 @@ pub struct InkAnimSequence {
     ///
     /// ⚠️ `definitions` size must always match `targets` size
     pub definitions: Vec<InkWrapper<InkAnimDefinition>>,
-    pub name: Name,
+    pub name: CName,
     /// describe the targets onto which the interpolations are played
     ///
     /// ⚠️ `targets` size must always match `definitions` size

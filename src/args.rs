@@ -56,6 +56,15 @@ pub struct PathNames {
 }
 
 #[derive(clap::Args, Debug)]
+pub struct OptionalPathNames {
+    /// filter by widget path name(s)
+    ///
+    /// e.g. "main_canvas.Arrival.Arrival_GPS_Canvas.Arrival_GPS_Elements_Canvas"
+    #[arg(short, long, value_parser = parse_path_names, value_name = "NAMES")]
+    pub names: Option<std::vec::Vec<String>>,
+}
+
+#[derive(clap::Args, Debug)]
 pub struct Mode {
     /// optionally output as JSON, Redscript or table (default)
     #[arg(value_enum, long, default_value_t = Output::Table)]

@@ -6,6 +6,110 @@ use serde::Deserialize;
 use crate::anim::Range;
 use crate::LocKey;
 
+pub fn deserialize_cname_from_format<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    struct CNameVisitor;
+    impl<'de> de::Visitor<'de> for CNameVisitor {
+        type Value = String;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("$type CName, with valid $storage and $value")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut type_ok = false;
+            let mut storage_ok = false;
+            let mut value_ok = false;
+            let mut value: String = String::new();
+            while let Some(key) = map.next_key::<&str>()? {
+                if key == "$type" {
+                    let value: &str = map.next_value()?;
+                    if value != "CName" {
+                        return Err(de::Error::custom("invalid map type"));
+                    } else {
+                        type_ok = true;
+                    }
+                }
+                if key == "$storage" {
+                    let value: &str = map.next_value()?;
+                    if value != "string" {
+                        return Err(de::Error::custom("invalid map storage"));
+                    } else {
+                        storage_ok = true;
+                    }
+                }
+                if key == "$value" {
+                    value = map.next_value::<String>()?;
+                    value_ok = true;
+                }
+            }
+            if type_ok && storage_ok && value_ok {
+                return Ok(value);
+            }
+            Err(de::Error::custom("invalid map sequence"))
+        }
+    }
+    deserializer.deserialize_any(CNameVisitor)
+}
+
+pub fn deserialize_resourcepath_from_format<'de, D>(
+    deserializer: D,
+) -> Result<std::path::PathBuf, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    struct ResourcePathVisitor;
+    impl<'de> de::Visitor<'de> for ResourcePathVisitor {
+        type Value = std::path::PathBuf;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("$type ResourcePath, with valid $storage and $value")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut type_ok = false;
+            let mut storage_ok = false;
+            let mut value_ok = false;
+            let mut value: String = String::new();
+            while let Some(key) = map.next_key::<&str>()? {
+                if key == "$type" {
+                    let value: &str = map.next_value()?;
+                    if value != "ResourcePath" {
+                        return Err(de::Error::custom("invalid map type"));
+                    } else {
+                        type_ok = true;
+                    }
+                }
+                if key == "$storage" {
+                    let value: &str = map.next_value()?;
+                    if value != "string" {
+                        return Err(de::Error::custom("invalid map storage"));
+                    } else {
+                        storage_ok = true;
+                    }
+                }
+                if key == "$value" {
+                    value = map.next_value::<String>()?;
+                    value_ok = true;
+                }
+            }
+            if type_ok && storage_ok && value_ok {
+                return Ok(std::path::PathBuf::from(value));
+            }
+            Err(de::Error::custom("invalid map sequence"))
+        }
+    }
+    deserializer.deserialize_any(ResourcePathVisitor)
+}
+
 pub fn deserialize_lockey_from_anything<'de, D>(deserializer: D) -> Result<Option<LocKey>, D::Error>
 where
     D: de::Deserializer<'de>,
